@@ -64,16 +64,6 @@ fn color(c: i32) {
     escape_end();
 }
 
-fn bold(b: bool) {
-    escape_start();
-    if b {
-        print!("\x1b[1m");
-    } else {
-        print!("\x1b[22m");
-    }
-    escape_end();
-}
-
 fn parse_porcelain2(data: String) -> Option<GitStatus> {
     let mut status = GitStatus {
         branch: None,
@@ -150,33 +140,39 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let status = parse_porcelain2(status).ok_or("Error while parsing Git output")?;
 
-    print!("(");
+    color(-1);
 
-    color(15);
-    bold(true);
     if let Some(branch) = status.branch {
         print!("{}", branch);
     } else {
         // Detached head
         print!(":HEAD");
     }
-    bold(false);
-    color(-1);
+
+    print!(" ");
 
     // Divergence with remote branch
-    if status.ahead != 0 {
-        print!("↑{}", status.ahead);
-    }
     if status.behind != 0 {
+        color(4);
         print!("↓{}", status.behind);
     }
-
-    if status.untracked + status.modified + status.deleted + status.unmerged + status.staged > 0 {
+    if status.ahead != 0 {
+        color(2);
+        print!("↑{}", status.ahead);
+    }
+    if status.ahead + status.behind > 0
+        && status.untracked + status.modified + status.deleted + status.unmerged + status.staged > 0
+    {
+        color(-1);
         print!("|");
     }
-    if status.untracked != 0 {
-        color(2);
-        print!("+{}", status.untracked);
+    if status.staged != 0 {
+        color(4);
+        print!("•{}", status.staged);
+    }
+    if status.unmerged != 0 {
+        color(3);
+        print!("x{}", status.unmerged);
     }
     if status.modified != 0 {
         color(5);
@@ -186,17 +182,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         color(1);
         print!("-{}", status.deleted);
     }
-    if status.unmerged != 0 {
-        color(3);
-        print!("x{}", status.unmerged);
-    }
-    if status.staged != 0 {
-        color(4);
-        print!("•{}", status.staged);
+    if status.untracked != 0 {
+        color(2);
+        print!("+{}", status.untracked);
     }
 
     color(-1);
-    print!(")");
 
     Ok(())
 }
