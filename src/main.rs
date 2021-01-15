@@ -91,22 +91,20 @@ fn parse_porcelain2(data: String) -> Option<GitStatus> {
         let mut entry = entry.split(' ');
         match entry.next() {
             // Header lines
-            Some("#") => {
-                match entry.next()? {
-                    "branch.head" => {
-                        let head = entry.next()?;
-                        if head != "(detached)" {
-                            status.branch = Some(String::from(head));
-                        }
-                    },
-                    "branch.ab" => {
-                        let a = entry.next()?;
-                        let b = entry.next()?;
-                        status.ahead = a.parse::<i64>().ok()?.abs();
-                        status.behind = b.parse::<i64>().ok()?.abs();
-                    },
-                    _ => {},
+            Some("#") => match entry.next()? {
+                "branch.head" => {
+                    let head = entry.next()?;
+                    if head != "(detached)" {
+                        status.branch = Some(String::from(head));
+                    }
                 }
+                "branch.ab" => {
+                    let a = entry.next()?;
+                    let b = entry.next()?;
+                    status.ahead = a.parse::<i64>().ok()?.abs();
+                    status.behind = b.parse::<i64>().ok()?.abs();
+                }
+                _ => {}
             },
             // File entries
             Some("1") | Some("2") => {
@@ -119,12 +117,12 @@ fn parse_porcelain2(data: String) -> Option<GitStatus> {
                 match y {
                     'M' => status.modified += 1,
                     'D' => status.deleted += 1,
-                    _ => {},
+                    _ => {}
                 }
             }
             Some("u") => status.unmerged += 1,
             Some("?") => status.untracked += 1,
-            _ => {},
+            _ => {}
         }
     }
     Some(status)
@@ -132,19 +130,25 @@ fn parse_porcelain2(data: String) -> Option<GitStatus> {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let output = process::Command::new("git")
-        .args(&["status", "--porcelain=v2", "-z", "--branch", "--untracked-files=all"])
+        .args(&[
+            "status",
+            "--porcelain=v2",
+            "-z",
+            "--branch",
+            "--untracked-files=all",
+        ])
         .stdin(process::Stdio::null())
         .stderr(process::Stdio::null())
         .output()?;
     if !output.status.success() {
         // We're most likely not in a Git repo
-        return Ok(())
+        return Ok(());
     }
     let status = String::from_utf8(output.stdout)
-        .ok().ok_or("Invalid UTF-8 while decoding Git output")?;
+        .ok()
+        .ok_or("Invalid UTF-8 while decoding Git output")?;
 
-    let status = parse_porcelain2(status)
-        .ok_or("Error while parsing Git output")?;
+    let status = parse_porcelain2(status).ok_or("Error while parsing Git output")?;
 
     print!("(");
 
